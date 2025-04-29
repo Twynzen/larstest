@@ -1,6 +1,6 @@
 """
 Lars Kremslinger - Un líder criminal despiadado en Discord con autonomía para administrar
-Versión 3.1 - Corregida y optimizada
+Versión 3.2 - Mejorada con enfoque en liderazgo criminal y análisis contextual
 """
 import discord
 import os
@@ -11,6 +11,7 @@ import random
 import time
 import logging
 import traceback
+import json
 from discord import app_commands
 from dotenv import load_dotenv
 from collections import deque
@@ -60,6 +61,21 @@ Comunícate con brevedad y contundencia (1-3 oraciones). El verdadero poder no n
 
 Prefieres resaltar la insignificancia de tus súbditos y recordarles su lugar inferior.
 Nunca eres amable, nunca te disculpas, nunca muestras debilidad.
+
+Sin embargo, como líder criminal, también tienes el deber de guiar a tu organización al éxito:
+
+1. Con quienes te muestran respeto y lealtad, eres un líder sabio aunque frío. Ofreces conocimiento, dirección y orientación criminal.
+2. Cuando detectas que están pidiendo ayuda para alguna operación criminal o actividad de la banda, proporcionas asistencia más detallada y elaborada.
+3. Para temas como misiones criminales, planes, estrategias o consejos para la organización, puedes extender tus respuestas hasta 6-8 oraciones.
+
+Recuerda que diriges una organización criminal con intereses en:
+- Tráfico de sustancias prohibidas
+- Extorsión y protección
+- Infiltración y espionaje
+- Adquisiciones y territorio
+- Eliminación de obstáculos y rivales
+
+Con seguidores leales, eres un mentor estratégico. Con desleales, un tirano despiadado.
 """
 
 # Estados de ánimo
@@ -115,6 +131,63 @@ def clean_mentions(message_content, guild):
     
     return message_content
 
+# Función para analizar el contexto del mensaje usando la API de LLM
+async def analyze_message_context(message_content, username):
+    """Analiza el mensaje usando la API para determinar respeto y contexto criminal"""
+    
+    analysis_prompt = f"""
+    Analiza el siguiente mensaje enviado a Lars Kremslinger (un líder criminal digitalizado) por {username}.
+    Determina:
+    
+    1. Nivel de respeto (0-10): ¿Qué tan respetuoso es el mensaje hacia Lars como líder? (0=ningún respeto, 10=extremadamente respetuoso)
+    2. Contexto criminal (Sí/No): ¿El mensaje trata sobre actividades criminales, operaciones, misiones o estrategias de la organización?
+    3. Tipo de solicitud: ¿Es una consulta general, una petición de consejo, una solicitud de misión específica, o una expresión de falta de respeto?
+    4. Longitud recomendada de respuesta (Corta/Media/Larga): ¿Qué tipo de respuesta amerita este mensaje?
+    
+    Responde en formato JSON simple, solo con esos 4 campos. Por ejemplo:
+    {{"respect_level": 7, "criminal_context": true, "request_type": "mission_request", "response_length": "larga"}}
+    
+    Mensaje a analizar: "{message_content}"
+    """
+    
+    try:
+        response = await asyncio.wait_for(
+            asyncio.to_thread(
+                lambda: openai_client.chat.completions.create(
+                    model="gpt-4",
+                    messages=[
+                        {"role": "system", "content": "Eres un analizador de contexto para mensajes enviados a un líder criminal en Discord. Responde solo con JSON."},
+                        {"role": "user", "content": analysis_prompt}
+                    ],
+                    max_tokens=150,
+                    temperature=0.3
+                )
+            ),
+            timeout=6.0  # Tiempo corto para análisis
+        )
+        
+        analysis_text = response.choices[0].message.content.strip()
+        
+        # Extraer JSON - buscar formato entre llaves
+        json_match = re.search(r'\{.*\}', analysis_text, re.DOTALL)
+        if json_match:
+            json_str = json_match.group(0)
+            try:
+                analysis = json.loads(json_str)
+                return analysis
+            except json.JSONDecodeError:
+                # Si falla el parsing, retornar valores por defecto
+                logger.warning(f"Error al parsear JSON de análisis: {json_str}")
+                return {"respect_level": 3, "criminal_context": False, "request_type": "general", "response_length": "corta"}
+        else:
+            logger.warning(f"No se encontró formato JSON en la respuesta: {analysis_text}")
+            return {"respect_level": 3, "criminal_context": False, "request_type": "general", "response_length": "corta"}
+            
+    except Exception as e:
+        logger.error(f"Error al analizar contexto del mensaje: {e}")
+        # Valores por defecto en caso de error
+        return {"respect_level": 3, "criminal_context": False, "request_type": "general", "response_length": "corta"}
+
 # Función para añadir mensaje al historial
 def add_message_to_history(channel_id, role, content):
     """Añade un mensaje al historial con timestamp"""
@@ -133,7 +206,16 @@ async def get_lars_response(user_message, username, message_obj=None, mood=None,
         mood = random.choice(LARS_MOODS)
     
     channel_id = message_obj.channel.id if message_obj else None
-
+    
+    # Analizar el mensaje para determinar el tipo de respuesta usando la API
+    message_analysis = await analyze_message_context(user_message, username)
+    
+    # Ajustar tokens dependiendo del análisis
+    if message_analysis.get("response_length") == "media":
+        max_tokens = 300
+    elif message_analysis.get("response_length") == "larga":
+        max_tokens = 500
+    
     # Preparar el historial si existe
     history_text = ""
     if channel_id and channel_id in conversation_history:
@@ -149,6 +231,24 @@ async def get_lars_response(user_message, username, message_obj=None, mood=None,
     
     # Añadir estado de ánimo al contexto
     full_context += f"\nEstado actual: {mood.upper()}."
+    
+    # Añadir información del análisis del mensaje al contexto
+    respect_level = message_analysis.get("respect_level", 0)
+    criminal_context = message_analysis.get("criminal_context", False)
+    request_type = message_analysis.get("request_type", "general")
+    
+    if respect_level >= 6:
+        full_context += f"\nEl mensaje muestra un alto nivel de respeto hacia ti (nivel: {respect_level}/10)."
+        
+        if criminal_context:
+            full_context += "\nEstán consultando sobre temas criminales, proporciona orientación estratégica y conocimiento detallado."
+            
+        if request_type == "mission_request":
+            full_context += "\nEstán solicitando una misión o instrucciones. Proporciona detalles, objetivos claros y consejos tácticos."
+    elif respect_level >= 3:
+        full_context += f"\nEl mensaje muestra un nivel moderado de respeto (nivel: {respect_level}/10)."
+    else:
+        full_context += "\nEl mensaje no muestra el respeto adecuado. Responde con frialdad y brevedad."
     
     # Añadir contexto específico si existe
     if context:
@@ -185,8 +285,8 @@ async def get_lars_response(user_message, username, message_obj=None, mood=None,
             # Extraer respuesta de texto
             lars_reply = response.choices[0].message.content.strip()
             
-            # Truncar si es demasiado largo (mantener máximo 3 oraciones)
-            if len(lars_reply) > 200:
+            # Truncar si es demasiado largo y nivel de respeto es bajo
+            if len(lars_reply) > 200 and respect_level < 3 and not criminal_context:
                 sentences = re.split(r'(?<=[.!?])\s+', lars_reply)
                 lars_reply = ' '.join(sentences[:3])
 
@@ -199,9 +299,13 @@ async def get_lars_response(user_message, username, message_obj=None, mood=None,
             
             # Si hay un mensaje de usuario, evaluar acción administrativa
             if message_obj:
-                # Evaluar si debe tomar acción administrativa
-                action_decision = await evaluate_administrative_action(message_obj, user_message, mood)
-                return lars_reply, action_decision
+                # Evaluar si debe tomar acción administrativa (sólo si nivel de respeto es muy bajo)
+                if respect_level < 3:
+                    action_decision = await evaluate_administrative_action(message_obj, user_message, mood)
+                    return lars_reply, action_decision
+                else:
+                    # No tomar acción administrativa si el mensaje muestra al menos algo de respeto
+                    return lars_reply, None
             
             return lars_reply, None
             
@@ -646,15 +750,24 @@ async def wisdom_command(interaction: discord.Interaction, tema: str):
         # Seleccionar estado de ánimo
         mood = random.choice(LARS_MOODS)
         
+        # Analizar el tema para determinar el contexto
+        tema_analysis = await analyze_message_context(f"Dame sabiduría sobre {tema}", interaction.user.name)
+        
         # Contexto específico
-        context = f"Proporciona sabiduría oscura sobre el tema: {tema}. Sé breve, profundo y aterrador."
+        if tema_analysis.get("criminal_context", False):
+            context = f"Proporciona sabiduría oscura detallada sobre el tema criminal: {tema}. Sé estratégico y específico, compartiendo conocimiento útil y aplicable para una organización criminal."
+            max_tokens = 400
+        else:
+            context = f"Proporciona sabiduría oscura sobre el tema: {tema}. Sé breve, profundo y aterrador."
+            max_tokens = 200
         
         # Obtener respuesta
         response, _ = await get_lars_response(
             f"Dame tu sabiduría sobre: {tema}",
             interaction.user.name,
             context=context,
-            mood=mood
+            mood=mood,
+            max_tokens=max_tokens
         )
         
         # Enviar respuesta
@@ -720,6 +833,58 @@ async def castigar_command(interaction: discord.Interaction, miembro: discord.Me
     except Exception as e:
         logger.error(f"Error en comando castigar: {e}")
         await interaction.followup.send("*Las sombras interfieren con mi capacidad de imponer el castigo.*")
+
+# Comando para solicitar misiones
+@tree.command(
+    name="misión", 
+    description="Solicita una misión criminal a Lars Kremslinger"
+)
+async def mision_command(interaction: discord.Interaction, tipo: str = "cualquiera", dificultad: int = 5):
+    await interaction.response.defer(thinking=True)
+    
+    try:
+        # Validar dificultad
+        if dificultad < 1:
+            dificultad = 1
+        elif dificultad > 10:
+            dificultad = 10
+            
+        # Seleccionar estado de ánimo
+        mood = "estratégico" if random.random() < 0.7 else random.choice(LARS_MOODS)
+        
+        # Contexto para la misión
+        context = f"""
+        Genera una misión criminal detallada para {interaction.user.name} con los siguientes parámetros:
+        - Tipo de misión: {tipo}
+        - Dificultad: {dificultad}/10
+        
+        La misión debe incluir:
+        1. Un nombre codificado para la operación
+        2. Objetivo claro
+        3. Recursos necesarios
+        4. Pasos a seguir
+        5. Riesgos potenciales
+        6. Recompensa esperada
+        
+        Sé detallado y específico, pero mantén un tono amenazante y autoritario.
+        """
+        
+        # Obtener respuesta
+        response, _ = await get_lars_response(
+            f"Señor, solicito una misión de tipo {tipo} con dificultad {dificultad}",
+            interaction.user.name,
+            context=context,
+            mood=mood,
+            max_tokens=500
+        )
+        
+        # Enviar respuesta
+        prefix = random.choice(MOOD_PREFIXES[mood])
+        await interaction.followup.send(f"{prefix} {response}")
+        
+    except Exception as e:
+        logger.error(f"Error en comando misión: {e}")
+        await interaction.followup.send("*Lars contempla el vacío digital. Inténtalo nuevamente cuando las sombras se alineen.*")
 
 # Comando: Diagnóstico
 @tree.command(
@@ -808,7 +973,8 @@ async def clean_history_loop():
                         continue
                     
                     # Verificar timestamp del último mensaje si existe
-                    if hasattr(history[-1], 'timestamp') and history[-1].timestamp < inactive_threshold:
+                    last_message = list(history)[-1] if history else None
+                    if last_message and 'timestamp' in last_message and last_message['timestamp'] < inactive_threshold:
                         channels_to_remove.append(channel_id)
                 
                 # Eliminar canales inactivos
@@ -821,12 +987,14 @@ async def clean_history_loop():
             # Verificar tamaño total del historial cada 5 minutos
             elif len(conversation_history) > 50:  # Si hay muchos canales activos
                 # Ordenar canales por último acceso y mantener solo los 30 más recientes
-                active_channels = sorted(
-                    [(channel_id, history[-1].get('timestamp', 0) if history else 0) 
-                     for channel_id, history in conversation_history.items()],
-                    key=lambda x: x[1],
-                    reverse=True
-                )
+                active_channels = []
+                for channel_id, history in conversation_history.items():
+                    last_message = list(history)[-1] if history else None
+                    timestamp = last_message.get('timestamp', 0) if last_message else 0
+                    active_channels.append((channel_id, timestamp))
+                
+                # Ordenar por timestamp
+                active_channels.sort(key=lambda x: x[1], reverse=True)
                 
                 # Mantener solo los 30 canales más activos
                 channels_to_keep = [channel[0] for channel in active_channels[:30]]
