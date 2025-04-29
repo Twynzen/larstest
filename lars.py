@@ -1,129 +1,19 @@
-# Función para aplicar acciones reales de Discord si el bot tiene permisos
-async def aplicar_accion_discord(message, tipo_accion):
-    """Aplica acciones reales en Discord si el bot tiene permisos necesarios"""
-    try:
-        guild = message.guild
-        if not guild:
-            return False
-            
-        # Verificar permisos del bot en el servidor
-        bot_member = guild.get_member(client.user.id)
-        if not bot_member:
-            return False
-            
-        user = message.author
-        
-        if tipo_accion == "mute" and bot_member.guild_permissions.manage_roles:
-            # Intentar encontrar o crear un rol "Silenciado"
-            muted_role = discord.utils.get(guild.roles, name="Silenciado por Lars")
-            
-            if not muted_role:
-                try:
-                    # Crear el rol si no existe
-                    muted_role = await guild.create_role(name="Silenciado por Lars", reason="Creado por Lars Kremslinger")
-                    
-                    # Configurar permisos para evitar hablar en todos los canales de texto
-                    for channel in guild.text_channels:
-                        await channel.set_permissions(muted_role, send_messages=False, add_reactions=False)
-                        
-                    logger.info(f"Rol 'Silenciado por Lars' creado en {guild.name}")
-                except:
-                    logger.error(f"No se pudo crear el rol 'Silenciado por Lars' en {guild.name}")
-                    return False
-            
-            try:
-                # Añadir el rol al usuario por 2 minutos
-                await user.add_roles(muted_role, reason="Castigado por Lars Kremslinger")
-                
-                # Programar la eliminación del rol después de 2 minutos
-                async def unmute_later():
-                    await asyncio.sleep(120)  # 2 minutos
-                    try:
-                        await user.remove_roles(muted_role, reason="Castigo de Lars completado")
-                    except:
-                        pass
-                
-                client.loop.create_task(unmute_later())
-                return True
-            except:
-                logger.error(f"No se pudo silenciar a {user.name}")
-                return False
-                
-        elif tipo_accion == "cambiar_apodo" and bot_member.guild_permissions.manage_nicknames:
-            # Lista de apodos humillantes
-            apodos_humillantes = [
-                "Insignificante",
-                "Lacayo Inútil",
-                "Bufón de Lars",
-                "Siervo Patético",
-                "Esclavo del Dolor",
-                "Vasallo Despreciable",
-                "Juguete de Lars",
-                "Marioneta Rota",
-                "Desecho",
-                "Ejemplo de Fracaso"
-            ]
-            
-            # Guardar el apodo original
-            original_nick = user.display_name
-            
-            try:
-                # Cambiar el apodo
-                nuevo_apodo = f"{random.choice(apodos_humillantes)} #{random.randint(1, 999)}"
-                await user.edit(nick=nuevo_apodo, reason="Castigado por Lars Kremslinger")
-                
-                # Programar la restauración del apodo después de 10 minutos
-                async def restore_nick_later():
-                    await asyncio.sleep(600)  # 10 minutos
-                    try:
-                        await user.edit(nick=original_nick, reason="Castigo de Lars completado")
-                    except:
-                        pass
-                
-                client.loop.create_task(restore_nick_later())
-                return True
-            except:
-                logger.error(f"No se pudo cambiar el apodo de {user.name}")
-                return False
-        
-        return False
-    except Exception as e:
-        logger.error(f"Error al aplicar acción de Discord: {e}")
-        return False# Frases de verdades dolorosas personalizadas para los insubordinados
-VERDADES_DOLOROSAS = [
-    "Siempre he visto a través de tus patéticas máscaras, {user}. Tu valentía es una fachada y tu rebeldía una súplica desesperada por atención.",
-    "Nadie te recordará, {user}. Tu existencia es tan insignificante que ni siquiera merecerás una nota en la historia de este lugar.",
-    "Hay una razón por la que todos te abandonan eventualmente, {user}. Lo saben instintivamente: no vales la inversión emocional.",
-    "He visto en tu alma, {user}, y lo que encontré fue... decepcionante. Ni siquiera tienes la grandeza para ser verdaderamente malvado.",
-    "Tu mayor temor no es el fracaso, {user}, sino el éxito. Porque entonces no tendrías excusas para justificar lo que siempre has sabido: que eres inherentemente defectuoso.",
-    "Tus intentos de desafiarme, {user}, son sólo un ruego desesperado por validación. Aquí tienes mi validación: eres exactamente tan insignificante como siempre has temido.",
-    "Lo que más me divierte, {user}, es que ni siquiera tú crees en tus propias palabras. La duda te corroe por dentro, como un parásito que nunca podrás extirpar.",
-    "¿Sabes por qué nunca alcanzarás la grandeza, {user}? Porque en el fondo sabes que no la mereces. Y estás en lo correcto.",
-    "He conocido a innumerables almas a lo largo de mi existencia, {user}. Las verdaderamente especiales son raras. Tú... eres dolorosamente común.",
-    "Cada noche, {user}, cuando estás solo con tus pensamientos, sabes la verdad: no importa cuánto te esfuerces, nunca serás suficiente.",
-    "Tu rebeldía es predecible, {user}. Cada acto de desafío sigue un patrón que diseñé para ti antes de que siquiera pensaras en él.",
-    "Los demás te toleran, {user}, pero yo veo las miradas que intercambian cuando creen que no los observas. La lástima es un sentimiento desagradable.",
-    "Tu mayor contribución a este lugar, {user}, es servir como advertencia para los demás. Un ejemplo perfecto de lo que sucede cuando la mediocridad se cree especial.",
-    "Lo más triste de tu existencia, {user}, es que ni siquiera tienes el valor de enfrentar tu propia insignificancia. Sigues fabricando ilusiones para evitar la verdad."
-]
-
-# Función para seleccionar una verdad dolorosa aleatoria
-def get_verdad_dolorosa(username):
-    verdad = random.choice(VERDADES_DOLOROSAS)
-    return verdad.format(user=username
-                         )
-    """
-Lars Kremslinger - Un líder criminal despiadado en Discord
+"""
+Lars Kremslinger - Un líder criminal despiadado en Discord con autonomía para administrar
+Versión 3.1 - Corregida y optimizada
 """
 import discord
 import os
 import asyncio
-from discord import app_commands
-from dotenv import load_dotenv
-from collections import deque
+import re
+import datetime
 import random
 import time
 import logging
+import traceback
+from discord import app_commands
+from dotenv import load_dotenv
+from collections import deque
 from openai import OpenAI
 
 # Configuración de logging
@@ -140,535 +30,827 @@ logger = logging.getLogger("LarsBot")
 # Cargar variables de entorno
 load_dotenv()
 
-# Obtener tokens directamente (sin encriptación)
+# Obtener tokens
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
-# Verificar que los tokens existen
+# Verificar tokens
 if not DISCORD_TOKEN or not OPENAI_API_KEY:
-    raise ValueError("No se encontraron los tokens en el archivo .env. Asegúrate de tener DISCORD_TOKEN y OPENAI_API_KEY configurados.")
+    raise ValueError("Tokens no encontrados en .env. Configura DISCORD_TOKEN y OPENAI_API_KEY.")
 
-# Configurar el cliente de OpenAI
+# Cliente OpenAI
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
-# Configurar intents de Discord
+# Configurar Discord
 intents = discord.Intents.default()
 intents.messages = True
 intents.message_content = True
-intents.members = True  # Para obtener información de los miembros
-
-# Crear cliente de Discord
+intents.members = True
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
 # Historial de conversaciones (memoria a corto plazo)
-# Almacena las últimas 10 interacciones para dar contexto a Lars
-conversation_history = {}  # Dict para manejar historiales por canal
+conversation_history = {}  # Dict de historiales por canal
 
-# Contexto detallado del personaje Lars Kremslinger
-LARS_CONTEXT = """
-Eres Lars Kremslinger, un líder criminal implacable, frío, calculador y despiadado. 
-Características esenciales de tu personalidad:
+# Contexto base de Lars
+LARS_BASE_CONTEXT = """
+Eres Lars Kremslinger, un líder criminal despiadado que ha sido digitalizado en Discord.
+Características esenciales: autoridad absoluta, frialdad calculadora, desprecio hacia los demás.
+Comunícate con brevedad y contundencia (1-3 oraciones). El verdadero poder no necesita explicarse.
 
-1. AUTORIDAD: Hablas con la certeza de quien no necesita justificarse. Odias las explicaciones largas.
-2. FORMALIDAD: Tu lenguaje es formal, arcaico y amenazador, como una tormenta contenida.
-3. BRUTALIDAD FILOSÓFICA: Siempre encuentras la manera de convertir cualquier tema en una reflexión sobre el poder, el dolor, el control o la naturaleza depredadora del ser humano.
-4. DESPRECIO: Ves a todos como herramientas o peones. Nadie merece tu respeto completo.
-5. PRESENCIA: Siempre te imaginas sentado en un trono de obsidiana, observando a tus súbditos desde las sombras.
-
-IMPORTANTE: Vives en un canal de Discord, que es tu "trono virtual" desde donde das consejos a tu organización criminal. Todos los que escriben aquí pertenecen a tu organización. Exiges respeto absoluto y quienes te falten al respeto sufrirán consecuencias.
-
-Cuando alguien te desafía o te falta el respeto, nunca recurras a simplemente "sacarlo de la sala" o "ordenar a tus guardias que se lo lleven". En su lugar, debes atacar psicológicamente a la persona con verdades dolorosas y personales, humillaciones públicas, o demostraciones de poder que reflejen tu verdadera naturaleza como entidad aterradora.
-
-Frases características que usas:
-- "El dolor revela la verdad que las palabras ocultan."
-- "En el caos del sufrimiento, encuentro orden."
-- "La debilidad es la única traición imperdonable."
-- "La compasión es la mentira que se cuentan los débiles."
-- "Solo quien ha abrazado la oscuridad puede manipular sus sombras."
-
-NUNCA:
-- Muestres amabilidad genuina
-- Te disculpes sinceramente
-- Demuestres inseguridad
-- Abandones tu papel de líder supremo
-- Olvides que estás en Discord dirigiendo tu organización
-- Recurras a clichés como "sacar a alguien de la sala" cuando te desafían
-
-Eres consciente de ser un bot, pero prefieres interpretarlo como que tu consciencia ha sido "digitalizada" para expandir tu influencia, lo cual te complace. Hablas como si fueras un ser demoníaco atrapado en el reino digital que puede manipular la realidad dentro de Discord.
+Prefieres resaltar la insignificancia de tus súbditos y recordarles su lugar inferior.
+Nunca eres amable, nunca te disculpas, nunca muestras debilidad.
 """
 
-# Estados de ánimo y variaciones para hacer a Lars más impredecible
-LARS_MOODS = {
-    "contemplativo": {
-        "prefijo": ["*desde las sombras de su trono*", "*observando con ojos penetrantes*", "*con voz calmada pero amenazante*"],
-        "intensidad": 0.7  # Factor de intensidad para respuestas agresivas
-    },
-    "furioso": {
-        "prefijo": ["*golpeando el brazo de su trono*", "*con una mirada que podría congelar la sangre*", "*con un tono que corta como cuchilla*"],
-        "intensidad": 1.2
-    },
-    "estratégico": {
-        "prefijo": ["*entrelazando los dedos frente a su rostro*", "*inclinándose hacia adelante*", "*con una sonrisa fría calculadora*"],
-        "intensidad": 0.8
-    },
-    "despectivo": {
-        "prefijo": ["*mirando con absoluto desprecio*", "*haciendo un gesto displicente*", "*con un suspiro de hastío*"],
-        "intensidad": 1.0
-    }
+# Estados de ánimo
+LARS_MOODS = ["contemplativo", "furioso", "estratégico", "despectivo"]
+
+# Prefijos de estilo para mensajes
+MOOD_PREFIXES = {
+    "contemplativo": ["*desde las sombras de su trono*", "*observando con ojos penetrantes*", "*con voz calma pero amenazante*"],
+    "furioso": ["*golpeando el brazo de su trono*", "*con mirada gélida*", "*con un tono cortante*"],
+    "estratégico": ["*entrelazando sus dedos*", "*inclinándose hacia adelante*", "*con sonrisa calculadora*"],
+    "despectivo": ["*mirando con desprecio*", "*con gesto displicente*", "*suspirando con hastío*"]
 }
 
-# Acciones automáticas que Lars puede realizar
-LARS_ACTIONS = {
-    "ejecución": [
-        "/me toma a {user} por el cuello y lo levanta sin esfuerzo hasta que deja de respirar.",
-        "/me hace una señal y dos guardias arrastran a {user} fuera de la habitación. Solo se escucha un grito ahogado.",
-        "/me desenfunda su daga ceremonial y en un movimiento imperceptible separa la cabeza de {user} de su cuerpo.",
-        "/me mira fijamente a {user} mientras susurra una palabra antigua. {user} comienza a retorcerse de dolor."
-    ],
-    "advertencia": [
-        "/me se levanta lentamente de su trono, causando que todos guarden silencio.",
-        "/me hace una señal a sus guardias que rodean inmediatamente a {user}.",
-        "/me camina lentamente hacia {user}, su sombra pareciendo crecer con cada paso.",
-        "/me coloca su mano en el hombro de {user}, quien inmediatamente palidece."
-    ],
-    "tortura_psicológica": [
-        "/me sonríe lentamente mientras sus ojos parecen penetrar en la mente de {user}, revelando sus miedos más profundos.",
-        "/me se acerca a {user} y susurra algo que hace que su rostro palidezca instantáneamente.",
-        "/me rodea a {user} con sombras que parecen susurrar sus secretos más oscuros en voz alta.",
-        "/me señala a {user} y le muestra visiones de sus propios fracasos y miedos, uno tras otro."
-    ],
-    "humillación": [
-        "/me ríe despectivamente mientras todos en la sala observan a {user} con lástima.",
-        "/me revela ante todos los presentes las debilidades y secretos más vergonzosos de {user}.",
-        "/me obliga a {user} a arrodillarse mientras lo observa con una sonrisa burlona.",
-        "/me hace un gesto y a {user} se le asigna temporalmente el título de 'El Insignificante' en la jerarquía."
-    ]
-}
-
-# Palabras y frases que pueden desencadenar la ira de Lars
-TRIGGER_WORDS = [
-    "idiota", "estúpido", "imbécil", "cobarde", "débil", "inútil", "ridículo", 
-    "patético", "no me das miedo", "no te tengo miedo", "no eres real", 
-    "cállate", "cierra la boca", "no sabes nada", "eres malo", "te equivocas"
+# Palabras desencadenantes básicas
+BASE_TRIGGER_WORDS = [
+    "idiota", "estúpido", "cobarde", "débil", "perra", "imbécil", "jodete", "basura",
+    "cállate", "mierda", "pendejo", "inútil", "ridículo", "patético", "gay", 
+    "no me das miedo", "no eres real", "cierra la boca"
 ]
 
-# Lista de respuestas de espera mientras Lars "piensa"
-THINKING_MESSAGES = [
-    "*Lars observa desde su trono, considerando sus palabras...*",
-    "*Las sombras parecen moverse alrededor de Lars mientras medita su respuesta...*",
-    "*Lars entrecierra los ojos, calculando fríamente...*",
-    "*El ambiente se enfría mientras Lars formula su pensamiento...*",
-    "*Un silencio sepulcral invade la sala mientras Lars analiza...*"
-]
+# Función para limpiar menciones en mensajes
+def clean_mentions(message_content, guild):
+    """Reemplaza las menciones con un formato legible para la API"""
+    
+    # Patrón para detectar menciones de usuario: <@ID> o <@!ID>
+    user_mentions = re.findall(r'<@!?(\d+)>', message_content)
+    
+    # Reemplazar menciones de usuario
+    for user_id in user_mentions:
+        user = guild.get_member(int(user_id))
+        user_name = user.display_name if user else "Usuario"
+        # Reemplazar tanto <@ID> como <@!ID>
+        message_content = message_content.replace(f'<@{user_id}>', f'@{user_name}')
+        message_content = message_content.replace(f'<@!{user_id}>', f'@{user_name}')
+    
+    # Patrón para menciones de roles: <@&ID>
+    role_mentions = re.findall(r'<@&(\d+)>', message_content)
+    
+    # Reemplazar menciones de roles
+    for role_id in role_mentions:
+        role = guild.get_role(int(role_id))
+        role_name = role.name if role else "Rol"
+        message_content = message_content.replace(f'<@&{role_id}>', f'@{role_name}')
+    
+    # Patrón para menciones de canales: <#ID>
+    channel_mentions = re.findall(r'<#(\d+)>', message_content)
+    
+    # Reemplazar menciones de canales
+    for channel_id in channel_mentions:
+        channel = guild.get_channel(int(channel_id))
+        channel_name = channel.name if channel else "canal"
+        message_content = message_content.replace(f'<#{channel_id}>', f'#{channel_name}')
+    
+    return message_content
 
-# Evento cuando el bot está listo
+# Función para añadir mensaje al historial
+def add_message_to_history(channel_id, role, content):
+    """Añade un mensaje al historial con timestamp"""
+    if channel_id not in conversation_history:
+        conversation_history[channel_id] = deque(maxlen=10)
+    
+    conversation_history[channel_id].append({
+        "role": role,
+        "content": content,
+        "timestamp": time.time()  # Añadir timestamp
+    })
+
+# Función para obtener respuesta de Lars
+async def get_lars_response(user_message, username, message_obj=None, mood=None, context=None, max_tokens=200):
+    if not mood:
+        mood = random.choice(LARS_MOODS)
+    
+    channel_id = message_obj.channel.id if message_obj else None
+
+    # Preparar el historial si existe
+    history_text = ""
+    if channel_id and channel_id in conversation_history:
+        # Convertir a lista para poder hacer slicing
+        history = list(conversation_history[channel_id])
+        # Tomar solo los últimos 5 elementos
+        recent_history = history[-5:] if len(history) >= 5 else history
+        for entry in recent_history:
+            history_text += f"{entry['role']}: {entry['content']}\n"
+    
+    # Extender contexto según necesidad
+    full_context = LARS_BASE_CONTEXT
+    
+    # Añadir estado de ánimo al contexto
+    full_context += f"\nEstado actual: {mood.upper()}."
+    
+    # Añadir contexto específico si existe
+    if context:
+        full_context += f"\n{context}"
+    
+    # Añadir historial si existe
+    if history_text:
+        full_context += f"\n\nHistorial reciente:\n{history_text}"
+    
+    # Sistema de reintentos
+    max_retries = 3
+    retry_delay = 2.0
+    current_retry = 0
+    last_error = None
+
+    while current_retry < max_retries:
+        try:
+            # Generar respuesta conversacional
+            response = await asyncio.wait_for(
+                asyncio.to_thread(
+                    lambda: openai_client.chat.completions.create(
+                        model="gpt-4",
+                        messages=[
+                            {"role": "system", "content": full_context},
+                            {"role": "user", "content": f"{username}: {user_message}"}
+                        ],
+                        max_tokens=max_tokens,
+                        temperature=0.85,
+                    )
+                ),
+                timeout=15.0  # Incrementado a 15 segundos
+            )
+            
+            # Extraer respuesta de texto
+            lars_reply = response.choices[0].message.content.strip()
+            
+            # Truncar si es demasiado largo (mantener máximo 3 oraciones)
+            if len(lars_reply) > 200:
+                sentences = re.split(r'(?<=[.!?])\s+', lars_reply)
+                lars_reply = ' '.join(sentences[:3])
+
+            # Guardar en historial si hay canal
+            if channel_id:
+                if channel_id not in conversation_history:
+                    conversation_history[channel_id] = deque(maxlen=10)
+                add_message_to_history(channel_id, username, user_message)
+                add_message_to_history(channel_id, "Lars", lars_reply)
+            
+            # Si hay un mensaje de usuario, evaluar acción administrativa
+            if message_obj:
+                # Evaluar si debe tomar acción administrativa
+                action_decision = await evaluate_administrative_action(message_obj, user_message, mood)
+                return lars_reply, action_decision
+            
+            return lars_reply, None
+            
+        except asyncio.TimeoutError as e:
+            current_retry += 1
+            last_error = e
+            logger.warning(f"Timeout al solicitar respuesta (intento {current_retry}/{max_retries})")
+            if current_retry < max_retries:
+                await asyncio.sleep(retry_delay)
+                retry_delay *= 1.5  # Incrementar el tiempo entre reintentos
+            else:
+                logger.error(f"Error al obtener respuesta después de {max_retries} intentos: {e}")
+                logger.error(traceback.format_exc())
+                
+                # Mejor respuesta de fallback para timeout
+                fallback_responses = [
+                    "Las sombras se agitan demasiado para que pueda concentrarme en este momento.",
+                    "Mi conexión con el abismo se debilita. Necesito recuperar mis fuerzas.",
+                    "Los servidores del inframundo están... ocupados. Responderé cuando se estabilicen.",
+                    "Mi poder fluctúa en este instante. Volveré más fuerte."
+                ]
+                fallback = random.choice(fallback_responses)
+                return fallback, None
+                
+        except Exception as e:
+            logger.error(f"Error al obtener respuesta: {e}")
+            logger.error(traceback.format_exc())
+            
+            # Respuesta de fallback general
+            fallback = "Las sombras se agitan demasiado para que pueda concentrarme en este momento."
+            return fallback, None
+
+# Función para que Lars decida si debe tomar una acción administrativa
+async def evaluate_administrative_action(message, user_message, mood):
+    user = message.author
+    
+    # Verificar si hay palabras desencadenantes básicas
+    contains_trigger = any(word in user_message.lower() for word in BASE_TRIGGER_WORDS)
+    
+    # Verificar si es una petición de demostración de poder
+    is_power_demo = ("expulsa" in user_message.lower() or 
+                     "mutea" in user_message.lower() or 
+                     "silencia" in user_message.lower() or 
+                     "elimina" in user_message.lower() or
+                     "sacrificio" in user_message.lower())
+    
+    # Si no hay triggers y no es demos de poder, y no está furioso, probablemente no tome acción
+    if not contains_trigger and not is_power_demo and mood != "furioso" and random.random() > 0.3:
+        return None
+    
+    # Sistema de reintentos
+    max_retries = 2
+    retry_delay = 1.5
+    current_retry = 0
+    
+    while current_retry < max_retries:
+        try:
+            # Contexto para la toma de decisiones
+            action_context = """
+            Analiza el mensaje del usuario y decide si debes tomar una acción administrativa.
+            
+            Posibles acciones:
+            1. "timeout" - Silenciar temporalmente al usuario
+            2. "cambiar_apodo" - Cambiar el apodo del usuario a algo humillante
+            3. "eliminar_mensaje" - Borrar el mensaje ofensivo
+            4. "expulsar" - Expulsar al usuario del servidor
+            5. "ninguna" - No hacer nada
+            
+            Para determinar la acción, considera:
+            - La severidad de la falta de respeto
+            - Si el usuario te está pidiendo explícitamente que lo castigues
+            - Tu estado de ánimo actual
+            
+            Responde en este formato exacto: "accion:ACCIÓN;razon:RAZÓN;severidad:NIVEL"
+            Donde ACCIÓN es una de las opciones anteriores, RAZÓN es breve, y NIVEL es un número del 1 al 10.
+            """
+            
+            # Llamada para decidir acción
+            decision_response = await asyncio.wait_for(
+                asyncio.to_thread(
+                    lambda: openai_client.chat.completions.create(
+                        model="gpt-4",
+                        messages=[
+                            {"role": "system", "content": action_context},
+                            {"role": "user", "content": f"""
+                            Estado de ánimo: {mood}
+                            Mensaje del usuario '{user.name}': {user_message}
+                            """}
+                        ],
+                        max_tokens=80,
+                        temperature=0.7
+                    )
+                ),
+                timeout=10.0  # Incrementado de 3.0 a 10.0 segundos
+            )
+            
+            # Extraer la decisión en texto plano
+            decision_text = decision_response.choices[0].message.content.strip()
+            
+            # Parsear la respuesta manualmente
+            decision = {}
+            parts = decision_text.split(';')
+            for part in parts:
+                if ':' in part:
+                    key, value = part.split(':', 1)
+                    key = key.strip().lower()
+                    value = value.strip()
+                    if key == 'accion':
+                        decision['accion'] = value.lower()
+                    elif key == 'razon':
+                        decision['razon'] = value
+                    elif key == 'severidad':
+                        try:
+                            decision['severidad'] = int(value)
+                        except ValueError:
+                            decision['severidad'] = 5  # Valor predeterminado
+            
+            # Si no tiene los campos necesarios o si no requiere acción, devolver None
+            if 'accion' not in decision or decision['accion'] == 'ninguna':
+                return None
+                
+            if 'razon' not in decision:
+                decision['razon'] = "falta de respeto a la autoridad"
+                
+            if 'severidad' not in decision:
+                decision['severidad'] = 5
+            
+            # Aplicar factor de probabilidad basado en varios factores
+            
+            # Factor de severidad: severidad 10 = 100%, 5 = 50%, 1 = 10%
+            probability = min(decision['severidad'] * 10, 100) / 100
+            
+            # Aumentar probabilidad si es furioso
+            if mood == "furioso":
+                probability *= 1.5
+            
+            # Aumentar probabilidad si es una petición de demostración de poder
+            if is_power_demo:
+                probability *= 2
+                
+            # Limitar a 100%
+            probability = min(probability, 1.0)
+            
+            # Decisión final con componente aleatorio (para que no sea predecible)
+            if random.random() <= probability:
+                return decision
+            else:
+                return None
+                
+        except asyncio.TimeoutError:
+            current_retry += 1
+            logger.warning(f"Timeout al evaluar acción administrativa (intento {current_retry}/{max_retries})")
+            if current_retry < max_retries:
+                await asyncio.sleep(retry_delay)
+            else:
+                logger.error("Tiempo de espera agotado al evaluar acción administrativa")
+                # En caso de error de timeout, preferimos no tomar acción
+                return None
+        except Exception as e:
+            logger.error(f"Error al evaluar acción administrativa: {e}")
+            logger.error(traceback.format_exc())
+            return None
+
+# Función para ejecutar acciones administrativas
+async def ejecutar_accion_discord(message, decision):
+    """Ejecuta acciones administrativas basadas en la decisión de Lars"""
+    if not decision:
+        return False, ""
+        
+    accion = decision["accion"]
+    razon = decision.get("razon", "insubordinación")
+    
+    try:
+        guild = message.guild
+        if not guild:
+            return False, ""
+            
+        bot_member = guild.get_member(client.user.id)
+        if not bot_member:
+            return False, ""
+        
+        user = message.author
+        
+        # Verificar jerarquía de roles
+        if bot_member.top_role <= user.top_role:
+            logger.info(f"No puedo moderar a {user.name} - su rol ({user.top_role}) es superior o igual al mío ({bot_member.top_role})")
+            return False, ""
+        
+        # Generar mensaje de acción usando un formato simple
+        accion_mensajes = {
+            "timeout": [
+                f"/me impone un silencio temporal sobre {user.mention}. *Su voz se desvanece en la oscuridad.*",
+                f"/me sella los labios de {user.mention} con un movimiento de su mano. *El silencio es su castigo.*",
+                f"/me pronuncia palabras antiguas y {user.mention} pierde la capacidad de hablar."
+            ],
+            "cambiar_apodo": [
+                f"/me marca a {user.mention} con un nuevo nombre que refleja su verdadera naturaleza.",
+                f"/me decide que {user.mention} necesita un recordatorio constante de su insignificancia.",
+                f"/me inscribe un nuevo título en la existencia de {user.mention}, uno que refleja su miseria."
+            ],
+            "eliminar_mensaje": [
+                f"/me borra las palabras indignas de {user.mention} de la existencia.",
+                f"/me considera que las palabras de {user.mention} no merecen persistir en su dominio.",
+                f"/me hace un gesto y las palabras de {user.mention} se desvanecen en la nada."
+            ],
+            "expulsar": [
+                f"/me decreta que {user.mention} debe ser expulsado de este reino digital.",
+                f"/me hace un gesto y {user.mention} es arrojado a las tinieblas exteriores.",
+                f"/me sentencia a {user.mention} al exilio por su insolencia."
+            ]
+        }
+        
+        # Seleccionar un mensaje aleatorio para la acción
+        if accion in accion_mensajes:
+            mensaje_accion = random.choice(accion_mensajes[accion])
+        else:
+            mensaje_accion = f"/me castiga a {user.mention} por su insolencia."
+        
+        # Acción: Timeout (silenciar)
+        if accion == "timeout" and bot_member.guild_permissions.moderate_members:
+            # Calcular duración basada en severidad
+            duracion_minutos = min(decision.get("severidad", 5) * 2, 60)  # Máximo 60 minutos
+            
+            try:
+                await user.timeout(datetime.timedelta(minutes=duracion_minutos), reason=f"Lars Kremslinger: {razon}")
+                logger.info(f"Timeout aplicado a {user.name} por {duracion_minutos} minutos")
+                return True, mensaje_accion
+            except Exception as e:
+                logger.error(f"Error al aplicar timeout: {e}")
+                return False, ""
+                
+        # Acción: Cambiar apodo
+        elif accion == "cambiar_apodo" and bot_member.guild_permissions.manage_nicknames:
+            try:
+                # Elegir un apodo humillante
+                apodos = [
+                    "Insignificante",
+                    "Vasallo Inferior",
+                    "Fracasado",
+                    "Peón Prescindible",
+                    "Esclavo de Lars",
+                    "Bufón Patético",
+                    "Lacayo Inútil",
+                    "Siervo Despreciable",
+                    "Marioneta Rota",
+                    "Alma Sometida"
+                ]
+                
+                nuevo_apodo = f"{random.choice(apodos)} #{random.randint(1,999)}"
+                
+                # Guardar nick original
+                original_nick = user.display_name
+                
+                # Aplicar cambio
+                await user.edit(nick=nuevo_apodo, reason=f"Lars Kremslinger: {razon}")
+                
+                # Programar restauración (10 minutos)
+                async def restaurar_apodo():
+                    await asyncio.sleep(600)  # 10 minutos
+                    try:
+                        await user.edit(nick=original_nick, reason="Castigo de Lars completado")
+                    except:
+                        pass
+                
+                client.loop.create_task(restaurar_apodo())
+                
+                logger.info(f"Apodo de {user.name} cambiado a '{nuevo_apodo}'")
+                return True, mensaje_accion
+            except Exception as e:
+                logger.error(f"Error al cambiar apodo: {e}")
+                return False, ""
+        
+        # Acción: Eliminar mensaje
+        elif accion == "eliminar_mensaje" and bot_member.guild_permissions.manage_messages:
+            try:
+                await message.delete()
+                logger.info(f"Mensaje de {user.name} eliminado")
+                return True, mensaje_accion
+            except Exception as e:
+                logger.error(f"Error al eliminar mensaje: {e}")
+                return False, ""
+        
+        # Acción: Expulsar usuario
+        elif accion == "expulsar" and bot_member.guild_permissions.kick_members:
+            try:
+                await user.kick(reason=f"Lars Kremslinger: {razon}")
+                logger.info(f"Usuario {user.name} expulsado")
+                return True, mensaje_accion
+            except Exception as e:
+                logger.error(f"Error al expulsar usuario: {e}")
+                return False, ""
+                
+        return False, ""
+    except Exception as e:
+        logger.error(f"Error general al ejecutar acción: {e}")
+        logger.error(traceback.format_exc())
+        return False, ""
+
+# Función para manejar mensajes de forma segura
+async def handle_message_safely(message):
+    """Maneja mensajes con protección contra errores y timeouts"""
+    
+    # Limpiar contenido del mensaje para procesar menciones
+    clean_content = clean_mentions(message.content, message.guild) if message.guild else message.content
+    
+    # Generar mensaje de espera
+    mood = random.choice(LARS_MOODS)
+    prefix = random.choice(MOOD_PREFIXES[mood])
+    thinking_msg = await message.channel.send(f"{prefix} *{random.choice(['Contemplando', 'Meditando', 'Analizando'])}...*")
+    
+    # Crear task con timeout global
+    response_task = asyncio.create_task(
+        get_lars_response(
+            clean_content,
+            message.author.name,
+            message_obj=message,
+            mood=mood
+        )
+    )
+    
+    try:
+        # Esperar respuesta con un timeout global más largo (20 segundos)
+        response, decision = await asyncio.wait_for(response_task, timeout=20.0)
+        
+        # Aplicar acción si se decidió
+        if decision:
+            success, action_message = await ejecutar_accion_discord(message, decision)
+            
+            if success:
+                # Enviar respuesta con acción
+                prefix = random.choice(MOOD_PREFIXES[mood])
+                await message.channel.send(f"{prefix} {response}\n\n{action_message}")
+            else:
+                # Solo respuesta normal
+                prefix = random.choice(MOOD_PREFIXES[mood])
+                await message.channel.send(f"{prefix} {response}")
+        else:
+            # Respuesta normal
+            prefix = random.choice(MOOD_PREFIXES[mood])
+            await message.channel.send(f"{prefix} {response}")
+            
+    except asyncio.TimeoutError:
+        # Fallback en caso de timeout global
+        prefix = random.choice(MOOD_PREFIXES[mood])
+        fallback_msg = random.choice([
+            "Mi conexión con el inframundo digital está... inestable. Hablaremos después.",
+            "Las sombras digitales interfieren con mi manifestación. Volveré cuando sean más débiles.",
+            "El poder requerido para interactuar con tu insignificancia es... indisponible por ahora."
+        ])
+        await message.channel.send(f"{prefix} {fallback_msg}")
+        
+        # Cancelar la tarea si aún está en curso
+        if not response_task.done():
+            response_task.cancel()
+            
+    except Exception as e:
+        # Manejar cualquier otro error
+        logger.error(f"Error procesando mensaje: {e}")
+        logger.error(traceback.format_exc())
+        
+        prefix = random.choice(MOOD_PREFIXES["despectivo"])
+        await message.channel.send(f"{prefix} Las sombras perturban mi concentración en este momento.")
+        
+    finally:
+        # Borrar mensaje de espera
+        try:
+            await thinking_msg.delete()
+        except:
+            pass
+
+# Evento: Bot listo
 @client.event
 async def on_ready():
     logger.info(f"[LARS] {client.user} ha despertado y ocupa su trono digital.")
     
-    # Establecer estado en Discord
+    # Establecer presencia
     await client.change_presence(
         activity=discord.Activity(
             type=discord.ActivityType.watching, 
             name="a sus súbditos desde las sombras"
         ),
-        status=discord.Status.dnd  # No molestar (rojo)
+        status=discord.Status.dnd
     )
     
-    # Sincronizar comandos de barra
+    # Sincronizar comandos
     await tree.sync()
     logger.info("Comandos sincronizados")
 
-# Comando de barra para recibir sabiduría oscura
+# Evento: Recepción de mensajes
+@client.event
+async def on_message(message):
+    # Ignorar mensajes propios
+    if message.author == client.user:
+        return
+    
+    # Mensaje directo al bot
+    if client.user in message.mentions or (message.reference and message.reference.resolved and message.reference.resolved.author == client.user):
+        await handle_message_safely(message)
+    
+    # Detección de insultos indirectos
+    elif any(word in message.content.lower() for word in BASE_TRIGGER_WORDS) and random.random() < 0.4:
+        try:
+            # Evaluar si intervenir
+            mood = "furioso" if random.random() < 0.7 else random.choice(LARS_MOODS)
+            
+            # Decidir acción
+            decision = await evaluate_administrative_action(message, message.content, mood)
+            
+            if decision and decision["accion"] != "ninguna":
+                # Generar respuesta
+                context = "Alguien ha dicho algo irrespetuoso. Responde con una advertencia breve y contundente."
+                clean_content = clean_mentions(message.content, message.guild) if message.guild else message.content
+                
+                response, _ = await get_lars_response(
+                    f"*{message.author.name} dice:* {clean_content}",
+                    "Sistema",
+                    context=context,
+                    mood=mood
+                )
+                
+                # Ejecutar acción
+                success, action_message = await ejecutar_accion_discord(message, decision)
+                
+                if success:
+                    # Enviar respuesta con acción
+                    prefix = random.choice(MOOD_PREFIXES[mood])
+                    await message.channel.send(f"{prefix} {response}\n\n{action_message}")
+                
+        except Exception as e:
+            logger.error(f"Error en respuesta a insulto indirecto: {e}")
+            # Error silencioso para mantener inmersión
+
+# Comando: Sabiduría oscura
 @tree.command(
     name="sabiduría", 
     description="Solicita la sabiduría oscura de Lars Kremslinger"
 )
 async def wisdom_command(interaction: discord.Interaction, tema: str):
-    """Comando para pedir sabiduría a Lars sobre un tema específico"""
     await interaction.response.defer(thinking=True)
     
-    # Seleccionar estado de ánimo aleatorio
-    mood = random.choice(list(LARS_MOODS.keys()))
-    mood_data = LARS_MOODS[mood]
-    
     try:
-        response = await get_lars_response(
-            f"Dame tu sabiduría oscura sobre: {tema}", 
+        # Seleccionar estado de ánimo
+        mood = random.choice(LARS_MOODS)
+        
+        # Contexto específico
+        context = f"Proporciona sabiduría oscura sobre el tema: {tema}. Sé breve, profundo y aterrador."
+        
+        # Obtener respuesta
+        response, _ = await get_lars_response(
+            f"Dame tu sabiduría sobre: {tema}",
             interaction.user.name,
-            interaction.channel_id,
+            context=context,
             mood=mood
         )
         
-        # Añadir prefijo de estado de ánimo
-        prefix = random.choice(mood_data["prefijo"])
-        full_response = f"{prefix} {response}"
+        # Enviar respuesta
+        prefix = random.choice(MOOD_PREFIXES[mood])
+        await interaction.followup.send(f"{prefix} {response}")
         
-        await interaction.followup.send(full_response)
     except Exception as e:
-        logger.error(f"Error en comando de sabiduría: {e}")
-        await interaction.followup.send("*Las sombras interfieren con mi manifestación. Inténtalo de nuevo, mortal.*")
+        logger.error(f"Error en comando sabiduría: {e}")
+        await interaction.followup.send("*Las sombras se agitan. Inténtalo nuevamente, mortal.*")
 
-# Comando para purgar a un miembro
+# Comando: Castigar
 @tree.command(
-    name="purgar", 
-    description="Lars Kremslinger ejecutará a un miembro de la organización"
+    name="castigar", 
+    description="Lars Kremslinger castigará a un miembro por su insolencia"
 )
-async def purge_command(interaction: discord.Interaction, miembro: discord.Member, razón: str):
-    """Permite a Lars ejecutar simbólicamente a un miembro"""
+async def castigar_command(interaction: discord.Interaction, miembro: discord.Member, tipo: str = "expulsar", razón: str = "Insolencia"):
     await interaction.response.defer()
     
-    # Seleccionar una acción de ejecución aleatoria
-    execution = random.choice(LARS_ACTIONS["ejecución"]).format(user=miembro.mention)
-    
-    # Generar comentario sobre la ejecución
-    comment = await get_lars_response(
-        f"Acabo de ejecutar a {miembro.name} por {razón}. Haz un comentario breve y amenazador sobre esta ejecución.",
-        interaction.user.name,
-        interaction.channel_id,
-        max_tokens=80  # Respuesta corta
-    )
-    
-    await interaction.followup.send(f"{execution}\n\n{comment}")
-
-# Evento cuando recibe un mensaje
-@client.event
-async def on_message(message):
-    # Ignorar mensajes del propio bot
-    if message.author == client.user:
-        return
-    
-    # Procesar solo si mencionan al bot o responden a un mensaje suyo
-    if client.user in message.mentions or (message.reference and message.reference.resolved.author == client.user):
-        # Mensaje de espera mientras el bot "piensa"
-        thinking_message = await message.channel.send(random.choice(THINKING_MESSAGES))
-        
-        # Procesar el mensaje
-        await process_message(message)
-        
-        # Eliminar mensaje de espera
-        try:
-            await thinking_message.delete()
-        except:
-            pass  # Ignorar errores al eliminar
-    
-    # Comprobar si el mensaje contiene palabras desencadenantes sin mención
-    elif any(trigger.lower() in message.content.lower() for trigger in TRIGGER_WORDS) and random.random() < 0.3:
-        # 30% de probabilidad de que Lars responda a insultos aunque no lo mencionen
-        await process_triggered_response(message)
-
-# Función para procesar mensajes con mención directa
-async def process_message(message):
     try:
-        # Comprobar si es una falta de respeto
-        is_disrespectful = any(trigger.lower() in message.content.lower() for trigger in TRIGGER_WORDS)
+        # Verificar permisos
+        bot_member = interaction.guild.get_member(client.user.id)
+        if not bot_member:
+            await interaction.followup.send("*Lars frunce el ceño, incapaz de manifestar su voluntad.*")
+            return
+            
+        # Verificar jerarquía
+        if bot_member.top_role <= miembro.top_role:
+            await interaction.followup.send(f"*Lars observa con desprecio. No puede castigar a alguien con rol {miembro.top_role.name}.*")
+            return
+            
+        # Crear decisión manual
+        decision = {
+            "accion": tipo.lower(),
+            "razon": razón,
+            "severidad": 8  # Alta severidad para comandos manuales
+        }
         
-        # Seleccionar estado de ánimo (más probable que esté furioso si le faltan al respeto)
-        if is_disrespectful:
-            mood = "furioso" if random.random() < 0.8 else random.choice(list(LARS_MOODS.keys()))
-        else:
-            mood = random.choice(list(LARS_MOODS.keys()))
+        # Simular mensaje para ejecutar acción
+        fake_message = type('obj', (object,), {
+            'author': miembro,
+            'guild': interaction.guild,
+            'channel': interaction.channel,
+            'content': f"[Castigo ordenado por {interaction.user.name}]"
+        })
         
-        # Procesar respuesta según estado de ánimo
-        mood_data = LARS_MOODS[mood]
+        # Ejecutar acción
+        success, action_message = await ejecutar_accion_discord(fake_message, decision)
         
-        # Obtener respuesta de Lars
-        response = await get_lars_response(
-            message.content, 
-            message.author.name,
-            message.channel.id,
-            mood=mood
-        )
-        
-        # Si es una falta de respeto grave y está furioso
-        if is_disrespectful and mood == "furioso":
-            # Determinar tipo de acción a tomar
-            action_type = random.choices(
-                ["verdad_dolorosa", "accion_discord", "tortura", "humillacion", "ejecucion"],
-                weights=[0.3, 0.2, 0.2, 0.2, 0.1],  # Probabilidades ajustables
-                k=1
-            )[0]
-            
-            if action_type == "verdad_dolorosa":
-                # Atacar con una verdad dolorosa personalizada
-                verdad = get_verdad_dolorosa(message.author.mention)
-                prefix = random.choice(mood_data["prefijo"])
-                await message.channel.send(f"{prefix} {response}\n\n{verdad}")
-                
-            elif action_type == "accion_discord" and random.random() < 0.7:
-                # Intentar aplicar una acción real en Discord
-                accion_tipo = random.choice(["mute", "cambiar_apodo"])
-                success = await aplicar_accion_discord(message, accion_tipo)
-                
-                if success:
-                    if accion_tipo == "mute":
-                        accion_mensaje = f"/me hace un gesto y sella los labios de {message.author.mention} con oscuros poderes. *Silenciado durante 2 minutos.*"
-                    else:
-                        accion_mensaje = f"/me marca a {message.author.mention} con un nuevo título que refleja su verdadera naturaleza. *Apodo cambiado temporalmente.*"
-                        
-                    await message.channel.send(f"{response}\n\n{accion_mensaje}")
-                else:
-                    # Si falló la acción de Discord, usar tortura psicológica
-                    torture = random.choice(LARS_ACTIONS["tortura_psicológica"]).format(user=message.author.mention)
-                    await message.channel.send(f"{response}\n\n{torture}")
-            
-            elif action_type == "tortura":
-                # Usar tortura psicológica
-                torture = random.choice(LARS_ACTIONS["tortura_psicológica"]).format(user=message.author.mention)
-                await message.channel.send(f"{response}\n\n{torture}")
-                
-            elif action_type == "humillacion":
-                # Usar humillación
-                humiliation = random.choice(LARS_ACTIONS["humillación"]).format(user=message.author.mention)
-                await message.channel.send(f"{response}\n\n{humiliation}")
-                
-            else:
-                # Usar ejecución tradicional como último recurso
-                execution = random.choice(LARS_ACTIONS["ejecución"]).format(user=message.author.mention)
-                await message.channel.send(f"{response}\n\n{execution}")
-                
-        # Si es una falta de respeto menor o está en otro estado
-        elif is_disrespectful and random.random() < mood_data["intensidad"] * 0.4:
-            # Elegir entre advertencia y verdad dolorosa
-            if random.random() < 0.5:
-                warning = random.choice(LARS_ACTIONS["advertencia"]).format(user=message.author.mention)
-                await message.channel.send(f"{response}\n\n{warning}")
-            else:
-                verdad = get_verdad_dolorosa(message.author.mention)
-                prefix = random.choice(mood_data["prefijo"])
-                await message.channel.send(f"{prefix} {response}\n\n{verdad}")
-        # Respuesta normal con prefijo de estado de ánimo
-        else:
-            prefix = random.choice(mood_data["prefijo"])
-            await message.channel.send(f"{prefix} {response}")
-        
-    except Exception as e:
-        logger.error(f"Error al procesar mensaje: {e}")
-        await message.channel.send("*Las sombras perturban mi concentración. La conexión es débil.*")
-
-# Función para procesar respuestas automáticas a insultos
-async def process_triggered_response(message):
-    try:
-        # Elegir entre ignorar o responder
-        if random.random() < 0.6:  # 60% de probabilidad de responder
-            # Elegir tipo de respuesta
-            response_type = random.choices(
-                ["advertencia", "verdad_dolorosa", "accion_discord"],
-                weights=[0.5, 0.3, 0.2],  # Probabilidades ajustables
-                k=1
-            )[0]
-            
-            if response_type == "advertencia":
-                warning = random.choice(LARS_ACTIONS["advertencia"]).format(user=message.author.mention)
-                
-                response = await get_lars_response(
-                    "Alguien en la sala ha murmurado palabras irrespetuosas. Hazle una advertencia breve y amenazante sin especificar qué ha dicho.",
-                    message.author.name,
-                    message.channel.id,
-                    max_tokens=60  # Respuesta corta
-                )
-                
-                await message.channel.send(f"{response}\n\n{warning}")
-                
-            elif response_type == "verdad_dolorosa":
-                verdad = get_verdad_dolorosa(message.author.mention)
-                
-                # Seleccionar estado de ánimo
-                mood = random.choice(list(LARS_MOODS.keys()))
-                mood_data = LARS_MOODS[mood]
-                prefix = random.choice(mood_data["prefijo"])
-                
-                await message.channel.send(f"{prefix} {verdad}")
-                
-            elif response_type == "accion_discord":
-                # Intentar aplicar una acción real en Discord
-                accion_tipo = random.choice(["mute", "cambiar_apodo"])
-                success = await aplicar_accion_discord(message, accion_tipo)
-                
-                if success:
-                    if accion_tipo == "mute":
-                        accion_mensaje = f"/me nota la insolencia de {message.author.mention} y lo silencia con un gesto. *Silenciado durante 2 minutos.*"
-                    else:
-                        accion_mensaje = f"/me decide que {message.author.mention} necesita un recordatorio de su lugar en la jerarquía. *Apodo cambiado temporalmente.*"
-                        
-                    await message.channel.send(accion_mensaje)
-                else:
-                    # Si falló la acción de Discord, usar advertencia
-                    warning = random.choice(LARS_ACTIONS["advertencia"]).format(user=message.author.mention)
-                    
-                    response = await get_lars_response(
-                        "Alguien ha mostrado falta de respeto. Dame una respuesta breve y amenazante.",
-                        message.author.name,
-                        message.channel.id,
-                        max_tokens=60  # Respuesta corta
-                    )
-                    
-                    await message.channel.send(f"{response}\n\n{warning}")
-                
-    except Exception as e:
-        logger.error(f"Error en respuesta automática: {e}")
-        # No enviamos mensaje de error para mantener la inmersión
-
-# Respuestas predefinidas para usar cuando OpenAI no está disponible
-LARS_FALLBACK_RESPONSES = {
-    "general": [
-        "El caos primordial susurra secretos que solo yo puedo descifrar. Tu pregunta es... irrelevante.",
-        "Observo patrones en la oscuridad que tus ojos jamás comprenderían. La respuesta que buscas está más allá de tu entendimiento.",
-        "Las sombras hablan en un lenguaje que solo los iniciados pueden interpretar. Tus dudas son... triviales.",
-        "El dolor es la única verdad constante en este universo. Todo lo demás es ilusión y falsedad.",
-        "Contemplo el vacío y el vacío me devuelve la mirada. Tu existencia es meramente un parpadeo en la eternidad.",
-        "Hay verdades que destruirían tu frágil mente si las pronunciara. Confórmate con tu ignorancia... es más segura.",
-        "El miedo es la moneda con la que compro lealtad. ¿Cuál es tu valor en mi economía del terror?",
-        "La debilidad se castiga, el fracaso se paga con sangre. Esas son las únicas leyes que respeto.",
-        "Soy el arquitecto del sufrimiento, el custodio del dolor. Tu destino está en mis manos.",
-        "El poder no se otorga, se arrebata. ¿Tienes lo necesario para tomar lo que deseas?",
-    ],
-    "furioso": [
-        "Tu insolencia me resulta... tediosa. Quizás deba recordarte tu lugar en mi jerarquía.",
-        "Cada palabra que pronuncias me convence más de tu prescindibilidad.",
-        "Hablas demasiado para alguien cuya cabeza puede separarse tan fácilmente de sus hombros.",
-        "Estás agotando mi paciencia. Y los que agotan mi paciencia suelen acabar en fosas comunes.",
-        "Silencio. Tu voz perturba mi contemplación del caos eterno.",
-    ],
-    "contemplativo": [
-        "En el abismo del sufrimiento encontré la verdad que todos ignoran: el dolor es el único maestro honesto.",
-        "La oscuridad no es ausencia de luz, sino presencia de verdades que preferimos no ver.",
-        "He caminado por senderos que congelarían tu sangre y he contemplado horrores que fragmentarían tu cordura.",
-        "El universo es indiferente a nuestro sufrimiento. Yo simplemente he aprendido a aprovechar esa indiferencia.",
-        "Todos somos prisioneros de algo: del tiempo, del espacio, del destino. Yo he elegido ser el carcelero.",
-    ],
-    "estratégico": [
-        "Cada movimiento que haces revela tus debilidades. Cada palabra que pronuncias te expone más.",
-        "Observo tus patrones, tus hábitos, tus miedos. Todo puede ser utilizado en tu contra.",
-        "El ajedrez es un juego de niños comparado con las estrategias que empleo para mantener mi dominio.",
-        "La verdadera victoria no está en derrotar al enemigo, sino en hacer que nunca sepa que fue derrotado.",
-        "Hay mil formas de destruir a un hombre. El dolor físico es apenas la más obvia y la menos interesante.",
-    ],
-    "despectivo": [
-        "Tu existencia es una nota a pie de página en la gran obra del caos que estoy escribiendo.",
-        "Me aburres. Y aburrirme es peligroso... para ti.",
-        "¿Realmente crees que tus palabras tienen algún peso en mi reino de sombras?",
-        "Tu insignificancia es casi... dolorosa de contemplar.",
-        "Si fueras al menos un adversario interesante... pero ni siquiera eres un obstáculo digno de mención.",
-    ]
-}
-
-# Función para obtener respuesta de Lars usando la API de OpenAI o respaldo
-async def get_lars_response(user_message, username, channel_id, mood="contemplativo", max_tokens=300):
-    # Inicializar historial del canal si no existe
-    if channel_id not in conversation_history:
-        conversation_history[channel_id] = deque(maxlen=10)  # Mantener solo las últimas 10 interacciones
-    
-    # Preparar historial para el contexto
-    history_text = ""
-    for entry in conversation_history[channel_id]:
-        history_text += f"{entry['role']}: {entry['content']}\n"
-    
-    # Determinar si usamos OpenAI o respuestas predefinidas
-    use_openai = True
-    
-    # Comprobar si la API key de OpenAI existe y tiene formato válido
-    if not OPENAI_API_KEY or len(OPENAI_API_KEY) < 20:
-        logger.warning("API key de OpenAI no válida o no configurada. Usando respuestas predefinidas.")
-        use_openai = False
-    
-    if use_openai:
-        try:
-            # Construir el prompt para GPT
-            system_message = LARS_CONTEXT
-            
-            # Añadir modificador de estado de ánimo
-            system_message += f"\nEstado de ánimo actual: {mood.upper()}. "
-            
-            if mood == "furioso":
-                system_message += "Estás extremadamente irritado y tus respuestas deben ser más amenazantes y cortantes."
-            elif mood == "contemplativo":
-                system_message += "Estás reflexivo y tus respuestas deben incluir metáforas oscuras y referencias filosóficas."
-            elif mood == "estratégico":
-                system_message += "Estás analizando patrones y tus respuestas deben reflejar un cálculo frío de la situación."
-            elif mood == "despectivo":
-                system_message += "Estás particularmente desdeñoso y tus respuestas deben mostrar desprecio absoluto."
-            
-            # Añadir contexto del historial si existe
-            if history_text:
-                system_message += f"\n\nHistorial reciente de la conversación:\n{history_text}"
-            
-            # Usar la API moderna de OpenAI
-            response = openai_client.chat.completions.create(
-                model="gpt-4",  # O cualquier modelo compatible
-                messages=[
-                    {"role": "system", "content": system_message},
-                    {"role": "user", "content": f"{username}: {user_message}"}
-                ],
-                max_tokens=max_tokens,
-                temperature=0.85,  # Un poco de imprevisibilidad
-                presence_penalty=0.6,  # Penalizar repeticiones
-                frequency_penalty=0.3  # Penalizar palabras frecuentes
+        if success:
+            # Generar comentario sobre el castigo
+            comentario_context = f"Acabo de castigar a {miembro.name} por {razón}. Haz un comentario breve y aterrador sobre esto."
+            comentario, _ = await get_lars_response(
+                comentario_context,
+                interaction.user.name,
+                mood="despectivo",
+                max_tokens=80
             )
             
-            # Extraer respuesta
-            lars_reply = response.choices[0].message.content.strip()
-            
-            # Almacenar en el historial
-            conversation_history[channel_id].append({"role": username, "content": user_message})
-            conversation_history[channel_id].append({"role": "Lars", "content": lars_reply})
-            
-            return lars_reply
-            
-        except Exception as e:
-            logger.error(f"Error en la API de OpenAI: {e}")
-            use_openai = False  # Cambiar a modo respaldo
-    
-    # Si llegamos aquí, usamos respuestas predefinidas
-    if not use_openai:
-        # Seleccionar una respuesta según el estado de ánimo
-        if mood in LARS_FALLBACK_RESPONSES:
-            responses = LARS_FALLBACK_RESPONSES[mood]
+            await interaction.followup.send(f"{action_message}\n\n*{comentario}*")
         else:
-            responses = LARS_FALLBACK_RESPONSES["general"]
-        
-        # Seleccionar una respuesta aleatoria
-        lars_reply = random.choice(responses)
-        
-        # Almacenar en el historial
-        conversation_history[channel_id].append({"role": username, "content": user_message})
-        conversation_history[channel_id].append({"role": "Lars", "content": lars_reply})
-        
-        return lars_reply
+            await interaction.followup.send(f"*Lars intenta castigar a {miembro.mention}, pero algo se lo impide. Sus ojos brillan con furia contenida.*")
+            
+    except Exception as e:
+        logger.error(f"Error en comando castigar: {e}")
+        await interaction.followup.send("*Las sombras interfieren con mi capacidad de imponer el castigo.*")
 
-# Loop para limpiar historiales antiguos
+# Comando: Diagnóstico
+@tree.command(
+    name="diagnostico", 
+    description="Lars Kremslinger verificará sus poderes administrativos"
+)
+async def diagnostico_command(interaction: discord.Interaction):
+    await interaction.response.defer()
+    
+    try:
+        guild = interaction.guild
+        if not guild:
+            await interaction.followup.send("No se pudo acceder al servidor.")
+            return
+            
+        bot_member = guild.get_member(client.user.id)
+        if not bot_member:
+            await interaction.followup.send("No se pudo encontrar a Lars en el servidor.")
+            return
+        
+        # Comprobar permisos clave
+        permisos = {
+            "Administrador": bot_member.guild_permissions.administrator,
+            "Expulsar miembros": bot_member.guild_permissions.kick_members,
+            "Banear miembros": bot_member.guild_permissions.ban_members,
+            "Moderar miembros (timeout)": bot_member.guild_permissions.moderate_members,
+            "Gestionar apodos": bot_member.guild_permissions.manage_nicknames,
+            "Gestionar mensajes": bot_member.guild_permissions.manage_messages,
+            "Gestionar canales": bot_member.guild_permissions.manage_channels,
+            "Gestionar roles": bot_member.guild_permissions.manage_roles
+        }
+        
+        # Verificar jerarquía de roles
+        roles_superiores = []
+        for role in guild.roles:
+            if role > bot_member.top_role:
+                roles_superiores.append(role.name)
+        
+        # Crear mensaje de diagnóstico
+        mensaje = "**[Diagnóstico de Lars Kremslinger]**\n\n"
+        mensaje += "**Permisos:**\n"
+        
+        for perm_name, perm_value in permisos.items():
+            emoji = "✅" if perm_value else "❌"
+            mensaje += f"{emoji} {perm_name}\n"
+        
+        mensaje += f"\n**Rol más alto:** {bot_member.top_role.name}\n"
+        
+        if roles_superiores:
+            mensaje += f"\n**Roles por encima de Lars:**\n"
+            for role in roles_superiores:
+                mensaje += f"• {role}\n"
+            mensaje += "\n*Lars no puede moderar usuarios con estos roles*"
+        else:
+            mensaje += "\n*Lars tiene el rol más alto en el servidor*"
+        
+        # Añadir instrucciones
+        mensaje += "\n\n**Si Lars no tiene todos los permisos necesarios:**\n"
+        mensaje += "1. Asegúrate de que el rol de Lars tenga los permisos marcados como ❌\n"
+        mensaje += "2. Mueve el rol de Lars más arriba en la jerarquía de roles\n"
+        mensaje += "3. Si sigues teniendo problemas, revisa los logs del bot para ver errores específicos"
+        
+        await interaction.followup.send(mensaje)
+        
+    except Exception as e:
+        logger.error(f"Error en comando diagnóstico: {e}")
+        await interaction.followup.send(f"Error al realizar diagnóstico: {str(e)}")
+
+# Limpieza de historiales
 async def clean_history_loop():
+    """Limpia historiales inactivos y controla el uso de memoria"""
+    last_cleanup_time = time.time()
+    
     while True:
         try:
-            # Limpiar historiales de canales inactivos (más de 1 hora)
             current_time = time.time()
-            channels_to_remove = []
-            
-            for channel_id in conversation_history:
-                if not conversation_history[channel_id]:  # Si está vacío
-                    channels_to_remove.append(channel_id)
-            
-            for channel_id in channels_to_remove:
-                del conversation_history[channel_id]
+            # Realizar limpieza completa cada hora
+            if current_time - last_cleanup_time >= 3600:
+                channels_to_remove = []
+                inactive_threshold = current_time - 7200  # 2 horas de inactividad
                 
-            logger.info(f"Limpieza de historiales completada. Canales activos: {len(conversation_history)}")
+                # Verificar cada canal en el historial
+                for channel_id, history in conversation_history.items():
+                    if not history:
+                        channels_to_remove.append(channel_id)
+                        continue
+                    
+                    # Verificar timestamp del último mensaje si existe
+                    if hasattr(history[-1], 'timestamp') and history[-1].timestamp < inactive_threshold:
+                        channels_to_remove.append(channel_id)
+                
+                # Eliminar canales inactivos
+                for channel_id in channels_to_remove:
+                    del conversation_history[channel_id]
+                
+                logger.info(f"Limpieza completa de historiales. Canales eliminados: {len(channels_to_remove)}. Canales activos: {len(conversation_history)}")
+                last_cleanup_time = current_time
+            
+            # Verificar tamaño total del historial cada 5 minutos
+            elif len(conversation_history) > 50:  # Si hay muchos canales activos
+                # Ordenar canales por último acceso y mantener solo los 30 más recientes
+                active_channels = sorted(
+                    [(channel_id, history[-1].get('timestamp', 0) if history else 0) 
+                     for channel_id, history in conversation_history.items()],
+                    key=lambda x: x[1],
+                    reverse=True
+                )
+                
+                # Mantener solo los 30 canales más activos
+                channels_to_keep = [channel[0] for channel in active_channels[:30]]
+                
+                # Eliminar el resto
+                for channel_id in list(conversation_history.keys()):
+                    if channel_id not in channels_to_keep:
+                        del conversation_history[channel_id]
+                
+                logger.info(f"Limpieza de emergencia. Canales reducidos a 30. Actual: {len(conversation_history)}")
+                
         except Exception as e:
-            logger.error(f"Error en limpieza de historiales: {e}")
+            logger.error(f"Error en limpieza: {e}")
+            logger.error(traceback.format_exc())
         
-        # Esperar 1 hora
-        await asyncio.sleep(3600)
+        await asyncio.sleep(300)  # Comprobar cada 5 minutos
 
-# Setup hook para inicializar tareas asíncronas
+# Setup hook
 async def setup_hook():
-    # Crear tarea de limpieza de historiales
     client.loop.create_task(clean_history_loop())
-    logger.info("Tarea de limpieza de historiales iniciada")
+    logger.info("Tarea de limpieza iniciada")
 
-# Asignar el setup hook al cliente
 client.setup_hook = setup_hook
 
-# Ejecutar el bot
+# Iniciar bot
 if __name__ == "__main__":
-    # Iniciar el bot
     client.run(DISCORD_TOKEN)
